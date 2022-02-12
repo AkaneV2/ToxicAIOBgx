@@ -5,6 +5,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="plugin_sdk">
+      <UniqueIdentifier>{e6f8990c-c4d6-4f85-8513-18ad665893ea}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -13,10 +16,25 @@
     <ClCompile Include="kennen.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="plugin_sdk\clipper.cpp">
+      <Filter>plugin_sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="plugin_sdk\plugin_sdk.cpp">
+      <Filter>plugin_sdk</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kennen.h">
       <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="plugin_sdk\clipper.h">
+      <Filter>plugin_sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="plugin_sdk\cpplinq.h">
+      <Filter>plugin_sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="plugin_sdk\plugin_sdk.hpp">
+      <Filter>plugin_sdk</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
