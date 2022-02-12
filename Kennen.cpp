@@ -279,7 +279,7 @@ namespace kennen
 						return;
 				}
 			}
-		}		
+		}
 	}
 
 	void on_draw()
