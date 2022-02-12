@@ -22,6 +22,7 @@ namespace kennen
 		TreeEntry* usee = nullptr;
 		TreeEntry* user = nullptr;
 		TreeEntry* r_min_enemys = nullptr;
+		TreeEntry* roverkill = nullptr;
 	}
 
 	namespace harass
@@ -35,6 +36,11 @@ namespace kennen
 		TreeEntry* spell_farm = nullptr;
 		TreeEntry* useqc = nullptr;
 		TreeEntry* usewc = nullptr;
+	}
+
+	namespace wmode
+	{
+		TreeEntry* wmode = nullptr;
 	}
 
 	namespace jungleclear
@@ -60,6 +66,8 @@ namespace kennen
 	void wlogic();
 	void elogic();
 	void rlogic();
+	void qharass();
+	void wharass();
 
 	void load()
 	{
@@ -78,6 +86,10 @@ namespace kennen
 				combo::useq->set_texture(myhero->get_spell(spellslot::q)->get_icon_texture());
 				combo::usew = combo->add_checkbox("UseW", "Use W", true);
 				combo::usew->set_texture(myhero->get_spell(spellslot::w)->get_icon_texture());
+				auto wconfig = combo->add_tab("comboW", "W Settings");
+				{
+					wmode::wmode = wconfig->add_combobox("kwmode", "W Mode", { {"Always",nullptr},{"Only stun",nullptr } }, 0);
+				}
 				combo::usee = combo->add_checkbox("UseE", "Use E (Better use it Manually)", false);
 				combo::usee->set_texture(myhero->get_spell(spellslot::e)->get_icon_texture());
 				combo::user = combo->add_checkbox("UseR", "Use R", true);
@@ -85,6 +97,8 @@ namespace kennen
 				auto rconfig = combo->add_tab("comboR", "R Settings");
 				{
 					combo::r_min_enemys = rconfig->add_slider("Rene", "Min R enemys in R range to use R", 2, 1, 5);
+					combo::roverkill = rconfig->add_checkbox("rovver", "R Overkill protection", true);
+					
 				}
 
 			}
@@ -106,13 +120,25 @@ namespace kennen
 				laneclear::usewc->set_texture(myhero->get_spell(spellslot::w)->get_icon_texture());
 			}
 
+			auto jungleclear = main_tab->add_tab("jungle", "Jungle Clear Settings");
+			{
+				jungleclear::useqj = jungleclear->add_checkbox("JcQ", "Use Q", true);
+				jungleclear::useqj->set_texture(myhero->get_spell(spellslot::q)->get_icon_texture());
+				jungleclear::usewj = jungleclear->add_checkbox("JcW", "Use W", true);
+				jungleclear::usewj->set_texture(myhero->get_spell(spellslot::w)->get_icon_texture());
+				jungleclear::useej = jungleclear->add_checkbox("JcE", "Use E", true);
+				jungleclear::useej->set_texture(myhero->get_spell(spellslot::e)->get_icon_texture());
+			}
+
 			auto draw = main_tab->add_tab("drawing", "Draw Settings");
-			draw::drawq = draw->add_checkbox("drawQ", "Draw Q Range", true);
-			draw::drawq->set_texture(myhero->get_spell(spellslot::q)->get_icon_texture());
-			draw::draww = draw->add_checkbox("drawW", "Draw W Range", true);
-			draw::draww->set_texture(myhero->get_spell(spellslot::w)->get_icon_texture());
-			draw::drawr = draw->add_checkbox("drawR", "Draw R Range", true);
-			draw::drawr->set_texture(myhero->get_spell(spellslot::r)->get_icon_texture());
+			{
+				draw::drawq = draw->add_checkbox("drawQ", "Draw Q Range", true);
+				draw::drawq->set_texture(myhero->get_spell(spellslot::q)->get_icon_texture());
+				draw::draww = draw->add_checkbox("drawW", "Draw W Range", true);
+				draw::draww->set_texture(myhero->get_spell(spellslot::w)->get_icon_texture());
+				draw::drawr = draw->add_checkbox("drawR", "Draw R Range", true);
+				draw::drawr->set_texture(myhero->get_spell(spellslot::r)->get_icon_texture());
+			}
 		}
 
 		event_handler<events::on_update>::add_callback(on_update);
@@ -137,7 +163,7 @@ namespace kennen
 		if (myhero->is_dead())
 		{
 			return;
-		}	
+		}		
 
 		if (orbwalker->combo_mode())
 		{
@@ -161,7 +187,99 @@ namespace kennen
 				rlogic();
 			}
 		}
-		
+
+		if (orbwalker->harass())
+		{
+			if (q->is_ready() && harass::useqh->get_bool())
+			{
+				qharass();
+			}
+
+			if (w->is_ready() && harass::usewh->get_bool())
+			{
+				wharass();
+			}
+		}
+
+		if (orbwalker->lane_clear_mode() && laneclear::spell_farm->get_bool())
+		{
+			auto lane_minions = entitylist->get_enemy_minions();
+
+			auto junglemobs = entitylist->get_jugnle_mobs_minions();
+
+			lane_minions.erase(std::remove_if(lane_minions.begin(), lane_minions.end(), [](game_object_script k)
+				{
+					return !k->is_valid_target(q->range());
+				}), lane_minions.end());
+
+			junglemobs.erase(std::remove_if(junglemobs.begin(), junglemobs.end(), [](game_object_script k)
+				{
+					return !k->is_valid_target(e->range());
+				}), junglemobs.end());
+
+			std::sort(lane_minions.begin(), lane_minions.end(), [](game_object_script a, game_object_script b)
+				{
+					return a->get_position().distance(myhero->get_position()) < b->get_position().distance(myhero->get_position());
+				});
+
+			std::sort(junglemobs.begin(), junglemobs.end(), [](game_object_script a, game_object_script b)
+				{
+					return a->get_max_health() > b->get_max_health();
+				});
+
+			if (!lane_minions.empty())
+			{
+				if (q->is_ready() && laneclear::useqc->get_bool())
+				{
+					if (q->cast(lane_minions.front()))
+					{
+						return;
+					}
+					if (q->cast(lane_minions.front()))
+						return;
+				}
+
+				if (w->is_ready() && laneclear::usewc->get_bool())
+				{
+					if (lane_minions.front()->has_buff(buff_hash("kennenmarkofstorm")))
+					{
+						if (myhero->count_enemies_in_range(w->range()) == 0)
+						{
+							if (w->cast())
+							{
+								return;
+							}
+						}
+						if (w->cast())
+							return;
+					}
+				}
+			}
+
+			if (!junglemobs.empty())
+			{
+				if (q->is_ready() && jungleclear::useqj->get_bool())
+				{
+					if (q->cast(junglemobs.front()))
+						return;
+				}
+
+				if (w->is_ready() && jungleclear::usewj->get_bool())
+				{
+					if (junglemobs.front()->has_buff(buff_hash("kennenmarkofstorm")))
+					{
+						if (w->cast())
+							return;
+					}
+				}
+
+				if (e->is_ready() && jungleclear::useej->get_bool())
+				{
+					if (e->cast(hud->get_hud_input_logic()->get_game_cursor_position()))
+						return;
+				}
+			}
+		}		
 	}
 
 	void on_draw()
@@ -181,6 +299,11 @@ namespace kennen
 
 		if (r->is_ready() && draw::drawr->get_bool())
 			draw_manager->add_circle(myhero->get_position(), r->range(), R_COLOR);
+
+		auto position = myhero->get_position();
+		renderer->world_to_screen(position, position);
+		auto spellclear = laneclear::spell_farm->get_bool();
+		draw_manager->add_text_on_screen(position + vector(0, 40), (spellclear ? 0xFF00FF00 : 0xFF0000FF), 14, "FARM %s", (spellclear ? "On" : "Off"));
 	}
 	
 	void qlogic()
@@ -205,13 +328,26 @@ namespace kennen
 
 		if (target != nullptr)
 		{
-			if (target->get_distance(myhero) <= w->range())
+			if (wmode::wmode->get_int() == 0)
 			{
-				if (target->get_buff_count(buff_hash("kennenmarkofstorm")) == 2)
+				if (target->get_distance(myhero) <= w->range())
 				{
 					if (w->cast(target))
 					{
 						return;
+					}
+				}
+			}
+			else if (wmode::wmode->get_int() == 1)
+			{
+				if (target->get_distance(myhero) <= w->range())
+				{
+					if (target->get_buff_count(buff_hash("kennenmarkofstorm")) == 2)
+					{
+						if (w->cast(target))
+						{
+							return;
+						}
 					}
 				}
 			}
@@ -240,11 +376,53 @@ namespace kennen
 
 		if (target != nullptr)
 		{
-			if (target->get_distance(myhero) <= r->range() && myhero->count_enemies_in_range(r->range()) >= combo::r_min_enemys->get_int())
+			if (combo::roverkill->get_bool() && target->get_health_percent() <= 10 && myhero->count_enemies_in_range(r->range()) == 1)
+			{
+				return;
+			}
+			else if (target->get_distance(myhero) <= r->range() && myhero->count_enemies_in_range(r->range()) >= combo::r_min_enemys->get_int())
 			{
 				if (r->cast(target))
 				{
 					return;
+				}
+			}
+		}
+	}
+
+	void qharass()
+	{
+		auto target = target_selector->get_target(q->range(), damage_type::magical);
+
+		if (target != nullptr)
+		{
+			if (!myhero->is_under_enemy_turret())
+			{
+				if (target->get_distance(myhero) <= q->range())
+				{
+					if (q->cast(target, hit_chance::high))
+					{
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	void wharass()
+	{
+		auto target = target_selector->get_target(q->range(), damage_type::magical);
+
+		if (target != nullptr)
+		{
+			if (!myhero->is_under_enemy_turret())
+			{
+				if (target->get_buff(buff_hash("kennenmarkofstorm")))
+				{
+					if (w->cast())
+					{
+						return;
+					}
 				}
 			}
 		}
