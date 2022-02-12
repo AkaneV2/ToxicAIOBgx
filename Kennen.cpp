@@ -54,6 +54,7 @@ namespace kennen
 
 	//handler
 	void on_update();
+	void on_draw();
 
 	void qlogic();
 	void wlogic();
@@ -62,10 +63,10 @@ namespace kennen
 
 	void load()
 	{
-		q = plugin_sdk->register_spell(spellslot::q, 1050);
+		q = plugin_sdk->register_spell(spellslot::q, 950);
 		q->set_skillshot(0.175, 0, 1650, { collisionable_objects::minions, collisionable_objects::yasuo_wall, collisionable_objects::heroes }, skillshot_type::skillshot_line);
-		w = plugin_sdk->register_spell(spellslot::w, 750);
-		e = plugin_sdk->register_spell(spellslot::e, 0);
+		w = plugin_sdk->register_spell(spellslot::w, 770);
+		e = plugin_sdk->register_spell(spellslot::e, 250);
 		r = plugin_sdk->register_spell(spellslot::r, 550);
 
 		main_tab = menu->create_tab("ta_Kennen", "Kennen");
@@ -77,10 +78,10 @@ namespace kennen
 				combo::useq->set_texture(myhero->get_spell(spellslot::q)->get_icon_texture());
 				combo::usew = combo->add_checkbox("UseW", "Use W", true);
 				combo::usew->set_texture(myhero->get_spell(spellslot::w)->get_icon_texture());
-				combo::usee = combo->add_checkbox("UseE", "Use E", true);
+				combo::usee = combo->add_checkbox("UseE", "Use E (Better use it Manually)", false);
 				combo::usee->set_texture(myhero->get_spell(spellslot::e)->get_icon_texture());
-				combo::usew = combo->add_checkbox("UseR", "Use R", true);
-				combo::usew->set_texture(myhero->get_spell(spellslot::r)->get_icon_texture());
+				combo::user = combo->add_checkbox("UseR", "Use R", true);
+				combo::user->set_texture(myhero->get_spell(spellslot::r)->get_icon_texture());
 				auto rconfig = combo->add_tab("comboR", "R Settings");
 				{
 					combo::r_min_enemys = rconfig->add_slider("Rene", "Min R enemys in R range to use R", 2, 1, 5);
@@ -110,13 +111,12 @@ namespace kennen
 			draw::drawq->set_texture(myhero->get_spell(spellslot::q)->get_icon_texture());
 			draw::draww = draw->add_checkbox("drawW", "Draw W Range", true);
 			draw::draww->set_texture(myhero->get_spell(spellslot::w)->get_icon_texture());
-			draw::drawe = draw->add_checkbox("drawE", "Draw E Range", true);
-			draw::drawe->set_texture(myhero->get_spell(spellslot::e)->get_icon_texture());
 			draw::drawr = draw->add_checkbox("drawR", "Draw R Range", true);
 			draw::drawr->set_texture(myhero->get_spell(spellslot::r)->get_icon_texture());
 		}
 
 		event_handler<events::on_update>::add_callback(on_update);
+		event_handler<events::on_draw>::add_callback(on_draw);
 	}
 
 	void unload()
@@ -127,6 +127,7 @@ namespace kennen
 		plugin_sdk->remove_spell(r);
 
 		event_handler<events::on_update>::remove_handler(on_update);
+		event_handler<events::on_draw>::remove_handler(on_draw);
 
 		menu->delete_tab("ta_Kennen");
 	}
@@ -136,7 +137,116 @@ namespace kennen
 		if (myhero->is_dead())
 		{
 			return;
+		}	
+
+		if (orbwalker->combo_mode())
+		{
+			if (q->is_ready() && combo::useq->get_bool())
+			{
+				qlogic();
+			}
+
+			if (w->is_ready() && combo::usew->get_bool())
+			{
+				wlogic();
+			}
+
+			if (e->is_ready() && combo::usee->get_bool())
+			{
+				elogic();
+			}
+
+			if (r->is_ready() && combo::user->get_bool())
+			{
+				rlogic();
+			}
 		}
 		
+	}
+
+	void on_draw()
+	{
+		if (myhero->is_dead())
+		{
+			return;
+		}
+
+		//Draw Q
+		if (q->is_ready() && draw::drawq->get_bool())
+			draw_manager->add_circle(myhero->get_position(), q->range(), Q_COLOR);
+
+		//Draw W
+		if (draw::draww->get_bool())
+			draw_manager->add_circle(myhero->get_position(), w->range(), W_COLOR);
+
+		if (r->is_ready() && draw::drawr->get_bool())
+			draw_manager->add_circle(myhero->get_position(), r->range(), R_COLOR);
+	}
+	
+	void qlogic()
+	{
+		auto target = target_selector->get_target(q->range(), damage_type::magical);
+		
+		if (target != nullptr)
+		{
+			if (target->get_distance(myhero) <= q->range())
+			{
+				if (q->cast(target, hit_chance::high))
+				{
+					return;
+				}
+			}
+		}
+	}
+
+	void wlogic()
+	{
+		auto target = target_selector->get_target(w->range(), damage_type::magical);
+
+		if (target != nullptr)
+		{
+			if (target->get_distance(myhero) <= w->range())
+			{
+				if (target->get_buff_count(buff_hash("kennenmarkofstorm")) == 2)
+				{
+					if (w->cast(target))
+					{
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	void elogic()
+	{
+		auto target = target_selector->get_target(e->range(), damage_type::magical);
+
+		if (target != nullptr)
+		{
+			if (target->get_distance(myhero) <= e->range() && !myhero->get_buff(buff_hash("KennenLightningRush")))
+			{
+				if (e->cast(target))
+				{
+					return;
+				}
+			}
+		}
+	}
+
+	void rlogic()
+	{
+		auto target = target_selector->get_target(r->range(), damage_type::magical);
+
+		if (target != nullptr)
+		{
+			if (target->get_distance(myhero) <= r->range() && myhero->count_enemies_in_range(r->range()) >= combo::r_min_enemys->get_int())
+			{
+				if (r->cast(target))
+				{
+					return;
+				}
+			}
+		}
 	}
 }
