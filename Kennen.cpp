@@ -66,8 +66,6 @@ namespace kennen
 	void wlogic();
 	void elogic();
 	void rlogic();
-	void qharass();
-	void wharass();
 
 	void load()
 	{
@@ -98,7 +96,7 @@ namespace kennen
 				{
 					combo::r_min_enemys = rconfig->add_slider("Rene", "Min R enemys in R range to use R", 2, 1, 5);
 					combo::roverkill = rconfig->add_checkbox("rovver", "R Overkill protection", true);
-					
+
 				}
 
 			}
@@ -163,7 +161,7 @@ namespace kennen
 		if (myhero->is_dead())
 		{
 			return;
-		}		
+		}
 
 		if (orbwalker->combo_mode())
 		{
@@ -192,12 +190,12 @@ namespace kennen
 		{
 			if (q->is_ready() && harass::useqh->get_bool())
 			{
-				qharass();
+				qlogic();
 			}
 
 			if (w->is_ready() && harass::usewh->get_bool())
 			{
-				wharass();
+				wlogic();
 			}
 		}
 
@@ -305,11 +303,22 @@ namespace kennen
 		auto spellclear = laneclear::spell_farm->get_bool();
 		draw_manager->add_text_on_screen(position + vector(0, 40), (spellclear ? 0xFF00FF00 : 0xFF0000FF), 14, "FARM %s", (spellclear ? "On" : "Off"));
 	}
-	
+
+	float get_combo_damage(game_object_script enemy)
+	{
+		auto damage = 0.f;
+		damage += q->is_ready() ? q->get_damage(enemy) : 0.f;
+		damage += w->is_ready() ? w->get_damage(enemy) : 0.f;
+		damage += e->is_ready() ? e->get_damage(enemy) : 0.f;
+		damage += r->is_ready() ? r->get_damage(enemy) : 0.f;
+
+		return (float)damage;
+	}
+
 	void qlogic()
 	{
 		auto target = target_selector->get_target(q->range(), damage_type::magical);
-		
+
 		if (target != nullptr)
 		{
 			if (target->get_distance(myhero) <= q->range())
@@ -330,7 +339,7 @@ namespace kennen
 		{
 			if (wmode::wmode->get_int() == 0)
 			{
-				if (target->get_distance(myhero) <= w->range())
+				if (target->get_distance(myhero) <= w->range() && target->is_ai_hero())
 				{
 					if (w->cast(target))
 					{
@@ -342,7 +351,7 @@ namespace kennen
 			{
 				if (target->get_distance(myhero) <= w->range())
 				{
-					if (target->get_buff_count(buff_hash("kennenmarkofstorm")) == 2)
+					if (target->get_buff_count(buff_hash("kennenmarkofstorm")) == 2 && target->is_ai_hero())
 					{
 						if (w->cast(target))
 						{
@@ -376,53 +385,18 @@ namespace kennen
 
 		if (target != nullptr)
 		{
-			if (combo::roverkill->get_bool() && target->get_health_percent() <= 10 && myhero->count_enemies_in_range(r->range()) == 1)
+			if (combo::roverkill->get_bool() && target->get_health_percent() <= 10)
 			{
-				return;
+				if (myhero->count_enemies_in_range(r->range()) == 1)
+				{
+					return;
+				}
 			}
 			else if (target->get_distance(myhero) <= r->range() && myhero->count_enemies_in_range(r->range()) >= combo::r_min_enemys->get_int())
 			{
 				if (r->cast(target))
 				{
 					return;
-				}
-			}
-		}
-	}
-
-	void qharass()
-	{
-		auto target = target_selector->get_target(q->range(), damage_type::magical);
-
-		if (target != nullptr)
-		{
-			if (!myhero->is_under_enemy_turret())
-			{
-				if (target->get_distance(myhero) <= q->range())
-				{
-					if (q->cast(target, hit_chance::high))
-					{
-						return;
-					}
-				}
-			}
-		}
-	}
-
-	void wharass()
-	{
-		auto target = target_selector->get_target(q->range(), damage_type::magical);
-
-		if (target != nullptr)
-		{
-			if (!myhero->is_under_enemy_turret())
-			{
-				if (target->get_buff(buff_hash("kennenmarkofstorm")))
-				{
-					if (w->cast())
-					{
-						return;
-					}
 				}
 			}
 		}
