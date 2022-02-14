@@ -156,6 +156,17 @@ namespace kennen
 		menu->delete_tab("ta_Kennen");
 	}
 
+	float get_combo_damage(game_object_script enemy)
+	{
+		auto damage = 0.f;
+		damage += q->is_ready() ? q->get_damage(enemy) : 0.f;
+		damage += w->is_ready() ? w->get_damage(enemy) : 0.f;
+		damage += e->is_ready() ? e->get_damage(enemy) : 0.f;
+		damage += r->is_ready() ? r->get_damage(enemy) : 0.f;
+
+		return (float)damage;
+	}
+
 	void on_update()
 	{
 		if (myhero->is_dead())
@@ -302,18 +313,7 @@ namespace kennen
 		renderer->world_to_screen(position, position);
 		auto spellclear = laneclear::spell_farm->get_bool();
 		draw_manager->add_text_on_screen(position + vector(0, 40), (spellclear ? 0xFF00FF00 : 0xFF0000FF), 14, "FARM %s", (spellclear ? "On" : "Off"));
-	}
-
-	float get_combo_damage(game_object_script enemy)
-	{
-		auto damage = 0.f;
-		damage += q->is_ready() ? q->get_damage(enemy) : 0.f;
-		damage += w->is_ready() ? w->get_damage(enemy) : 0.f;
-		damage += e->is_ready() ? e->get_damage(enemy) : 0.f;
-		damage += r->is_ready() ? r->get_damage(enemy) : 0.f;
-
-		return (float)damage;
-	}
+	}	
 
 	void qlogic()
 	{
@@ -323,7 +323,7 @@ namespace kennen
 		{
 			if (target->get_distance(myhero) <= q->range())
 			{
-				if (q->cast(target, hit_chance::high))
+				if (q->cast(target, hit_chance::high))				
 				{
 					return;
 				}
@@ -385,16 +385,9 @@ namespace kennen
 
 		if (target != nullptr)
 		{
-			if (combo::roverkill->get_bool() && target->get_health_percent() <= 10)
+			if (target->get_distance(myhero) <= r->range() && myhero->count_enemies_in_range(r->range()) >= combo::r_min_enemys->get_int())
 			{
-				if (myhero->count_enemies_in_range(r->range()) == 1)
-				{
-					return;
-				}
-			}
-			else if (target->get_distance(myhero) <= r->range() && myhero->count_enemies_in_range(r->range()) >= combo::r_min_enemys->get_int())
-			{
-				if (r->cast(target))
+				if (r->cast())
 				{
 					return;
 				}
