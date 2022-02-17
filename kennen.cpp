@@ -64,7 +64,6 @@ namespace kennen
 
 	void qlogic();
 	void wlogic();
-	void elogic();
 	void rlogic();
 
 	void load()
@@ -88,8 +87,6 @@ namespace kennen
 				{
 					wmode::wmode = wconfig->add_combobox("kwmode", "W Mode", { {"Always",nullptr},{"Only stun",nullptr } }, 0);
 				}
-				combo::usee = combo->add_checkbox("UseE", "Use E (Better use it Manually)", false);
-				combo::usee->set_texture(myhero->get_spell(spellslot::e)->get_icon_texture());
 				combo::user = combo->add_checkbox("UseR", "Use R", true);
 				combo::user->set_texture(myhero->get_spell(spellslot::r)->get_icon_texture());
 				auto rconfig = combo->add_tab("comboR", "R Settings");
@@ -184,11 +181,6 @@ namespace kennen
 			if (w->is_ready() && combo::usew->get_bool())
 			{
 				wlogic();
-			}
-
-			if (e->is_ready() && combo::usee->get_bool())
-			{
-				elogic();
 			}
 
 			if (r->is_ready() && combo::user->get_bool())
@@ -358,22 +350,6 @@ namespace kennen
 							return;
 						}
 					}
-				}
-			}
-		}
-	}
-
-	void elogic()
-	{
-		auto target = target_selector->get_target(e->range(), damage_type::magical);
-
-		if (target != nullptr)
-		{
-			if (target->get_distance(myhero) <= e->range() && !myhero->get_buff(buff_hash("KennenLightningRush")))
-			{
-				if (e->cast(target))
-				{
-					return;
 				}
 			}
 		}
